@@ -62,7 +62,7 @@ async function withBusy(ctx, task) {
 
 async function sendHelp(ctx) {
   return ctx.reply(
-    "Как пользоваться STUDY AI:\n\n• Отправь фото страницы или документ.\n• Напиши вопрос — отвечу.\n• Используй /summary, /search или /explain.\n\n" +
+    "Как пользоваться STUDY AI:\n\n• Отправь фото страницы или документ.\n• Напиши вопрос — отвечу.\n• Используй /summary, /search, /explain или /solve.\n\n" +
     "В группе можно обращаться через @username или отвечать на сообщение бота. Для обработки всех сообщений администратор должен отключить Privacy Mode через @BotFather.",
     keyboard
   );
@@ -233,6 +233,10 @@ bot.on("text", ctx => {
   if (waitingForExplain.has(key)) {
     waitingForExplain.delete(key);
     return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${text}. Добавь короткий пример.`));
+  }
+  if (waitingForSolve.has(key)) {
+    waitingForSolve.delete(key);
+    return withBusy(ctx, () => createSolution(text));
   }
   if (!text) return;
   return withBusy(ctx, () => createTextAnswer(text));
