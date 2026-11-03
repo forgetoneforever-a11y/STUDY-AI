@@ -1,13 +1,14 @@
 const { Telegraf, Markup } = require("telegraf");
 const http = require("node:http");
 const { botToken, maxFileBytes } = require("./config");
-const { createTextAnswer, analyzeImage } = require("./ai");
+const { createTextAnswer, createSolution, analyzeImage } = require("./ai");
 const { searchWeb } = require("./search");
 const { extractDocument } = require("./documents");
 
 const bot = new Telegraf(botToken);
 const waitingForSearch = new Set();
 const waitingForExplain = new Set();
+const waitingForSolve = new Set();
 // Group settings are in memory and reset when the service restarts.
 const groupSettings = new Map();
 const isGroup = ctx => ["group", "supergroup"].includes(ctx.chat.type);
@@ -22,7 +23,8 @@ async function isGroupAdmin(ctx) {
 
 const keyboard = Markup.keyboard([
   ["📝 Сделать конспект", "🌐 Поиск по теме"],
-  ["💡 Объяснить тему", "⚙️ Настройки чата"],
+  ["💡 Объяснить тему", "🧮 Решить задачу"],
+  ["⚙️ Настройки чата"],
   ["❔ Помощь"]
 ]).resize();
 
@@ -31,6 +33,7 @@ const commandList = [
   { command: "summary", description: "Сделать краткий конспект" },
   { command: "search", description: "Найти материалы по теме" },
   { command: "explain", description: "Объяснить тему простыми словами" },
+  { command: "solve", description: "Пошагово решить учебную задачу" },
   { command: "settings", description: "Настройки работы в чате" },
   { command: "group_on", description: "Включить ответы в группе (админ)" },
   { command: "group_off", description: "Выключить ответы в группе (админ)" },
@@ -134,6 +137,19 @@ bot.command("explain", ctx => {
   return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${topic}. Добавь короткий пример.`));
 });
 
+bot.command("solve", ctx => {
+  const problem = commandArgument(ctx);
+  const key = requestKey(ctx);
+  waitingForSearch.delete(key);
+  waitingForExplain.delete(key);
+  if (!problem) {
+    waitingForSolve.add(key);
+    return ctx.reply("Пришли условие задачи текстом, фотографией или документом. Я покажу решение по шагам.");
+  }
+  waitingForSolve.delete(key);
+  return withBusy(ctx, () => createSolution(problem));
+});
+
 bot.hears("📝 Сделать конспект", ctx => ctx.reply("Пришли фотографию, документ или текст."));
 bot.hears("🌐 Поиск по теме", ctx => {
   waitingForSearch.add(requestKey(ctx));
@@ -142,6 +158,10 @@ bot.hears("🌐 Поиск по теме", ctx => {
 bot.hears("💡 Объяснить тему", ctx => {
   waitingForExplain.add(requestKey(ctx));
   return ctx.reply("Напиши тему или термин.");
+});
+bot.hears("🧮 Решить задачу", ctx => {
+  waitingForSolve.add(requestKey(ctx));
+  return ctx.reply("Пришли условие задачи текстом, фотографией или документом.");
 });
 bot.hears("⚙️ Настройки чата", ctx => ctx.reply("В группе используй /settings. Администраторы могут использовать /group_on и /group_off."));
 bot.hears("❔ Помощь", sendHelp);
@@ -160,6 +180,11 @@ bot.on("photo", ctx => {
   const photo = ctx.message.photo.at(-1);
   return withBusy(ctx, async () => {
     const buffer = await downloadTelegramFile(ctx, photo.file_id);
+    const key = requestKey(ctx);
+    if (waitingForSolve.has(key)) {
+      waitingForSolve.delete(key);
+      return analyzeImage(buffer, "image/jpeg", "Реши задачу с фотографии. Сначала точно распознай условие и все данные. Затем покажи решение по шагам: дано, найти, формула, подстановка, вычисления, ответ. Если текст или числа неразборчивы, укажи это и не угадывай.");
+    }
     return analyzeImage(buffer, "image/jpeg");
   });
 });
@@ -174,6 +199,11 @@ bot.on("document", ctx => {
     const buffer = await downloadTelegramFile(ctx, doc.file_id);
     const extracted = await extractDocument(buffer, doc.file_name || "");
     if (!extracted.trim()) return "Текст не найден. Если PDF состоит из сканов, отправь страницы фотографиями.";
+    const key = requestKey(ctx);
+    if (waitingForSolve.has(key)) {
+      waitingForSolve.delete(key);
+      return createSolution(extracted);
+    }
     return createTextAnswer(extracted);
   });
 });
