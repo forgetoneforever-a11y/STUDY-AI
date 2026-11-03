@@ -8,17 +8,18 @@ const { extractDocument } = require("./documents");
 const bot = new Telegraf(botToken);
 const waitingForSearch = new Set();
 const waitingForExplain = new Set();
-const groupSettings = new Map(); // Defaults to enabled; admin changes last until the process restarts.
-const isGroup = ctx => ctx.chat.type === "group" || ctx.chat.type === "supergroup";
+// Group settings are in memory and reset when the service restarts.
+const groupSettings = new Map();
+const isGroup = ctx => ["group", "supergroup"].includes(ctx.chat.type);
 const groupEnabled = ctx => groupSettings.get(ctx.chat.id) !== false;
 const requestKey = ctx => `${ctx.chat.id}:${ctx.from.id}`;
+
 async function isGroupAdmin(ctx) {
   if (!isGroup(ctx)) return true;
   const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
   return ["creator", "administrator"].includes(member.status);
 }
-function groupHelpText() {
-  return "Команды группы:\n/summary — конспект материала\n/explain — объяснить тему\n/search — поиск материалов\n/settings — настройки группы\n/group_on — включить ответы (администратор)\n/group_off — выключить ответы (администратор)\n\nМожно написать @имя_бота и вопрос или ответить на сообщение бота.";
+
 const keyboard = Markup.keyboard([
   ["📝 Сделать конспект", "🌐 Поиск по теме"],
   ["💡 Объяснить тему", "⚙️ Настройки чата"],
@@ -31,8 +32,8 @@ const commandList = [
   { command: "search", description: "Найти материалы по теме" },
   { command: "explain", description: "Объяснить тему простыми словами" },
   { command: "settings", description: "Настройки работы в чате" },
-  { command: "group_on", description: "Разрешить ответы в группе (админ)" },
-  { command: "group_off", description: "Отключить ответы в группе (админ)" },
+  { command: "group_on", description: "Включить ответы в группе (админ)" },
+  { command: "group_off", description: "Выключить ответы в группе (админ)" },
   { command: "help", description: "Помощь и список команд" }
 ];
 
@@ -42,40 +43,61 @@ async function sendLong(ctx, value) {
     await ctx.reply(value.slice(i, i + limit), { disable_web_page_preview: true });
   }
 }
+
 async function withBusy(ctx, task) {
   const status = await ctx.reply("⏳ STUDY AI анализирует материал…");
   try {
     const result = await task();
     await ctx.telegram.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
-    await sendLong(ctx, result);
+    await sendLong(ctx, String(result || "Не удалось подготовить ответ."));
   } catch (error) {
     console.error(error);
     await ctx.telegram.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
     await ctx.reply("Не удалось обработать материал. Проверь формат файла и настройки сервера.");
   }
 }
+
 async function sendHelp(ctx) {
   return ctx.reply(
-    "Как пользоваться STUDY AI:\n\n• Отправь фото страницы.\n• Прикрепи PDF, DOCX или TXT.\n• Напиши тему обычным сообщением.\n• Выбери поиск, чтобы найти дополнительные материалы.\n\nКоманды: /start, /summary, /search, /explain, /settings, /help.\\n\\n" + groupHelpText(),
+    "Как пользоваться STUDY AI:\n\n• Отправь фото страницы или документ.\n• Напиши вопрос — отвечу.\n• Используй /summary, /search или /explain.\n\n" +
+    "В группе можно обращаться через @username или отвечать на сообщение бота. Для обработки всех сообщений администратор должен отключить Privacy Mode через @BotFather.",
     keyboard
   );
 }
 
 bot.start(ctx => ctx.reply(
-  "Привет! Я STUDY AI — помогу разобрать учебный материал и сделать краткий конспект.\n\nОтправь фотографию, PDF, DOCX или текст. Я выделю главное и при необходимости найду дополнительные источники.",
+  "Привет! Я STUDY AI — помогу разобрать учебный материал и сделать краткий конспект.\n\nОтправь фотографию, PDF, DOCX или текст.",
   keyboard
 ));
 bot.help(sendHelp);
-bot.command("settings", ctx => ctx.reply(
-  "⚙️ Настройки STUDY AI в чатах\n\n" +
-  "Личный чат: отправляй текст, фотографии и документы обычными сообщениями.\n\n" +
-  "Групповой чат: по умолчанию я отвечаю на команды /summary, /search, /explain и на сообщения, отправленные ответом на моё сообщение. Так я не засоряю общий чат.\n\n" +
-  "Чтобы я видел все обычные сообщения группы, администратор может отключить Privacy Mode через @BotFather → /setprivacy → выбрать бота → Disable. После этого меня нужно удалить из группы и добавить снова. Используй этот режим только если участники согласны."
-));
+
+bot.command("settings", async ctx => {
+  if (!isGroup(ctx)) return ctx.reply("Настройки группы доступны непосредственно в групповом чате.");
+  const admin = await isGroupAdmin(ctx).catch(() => false);
+  return ctx.reply(
+    "⚙️ Настройки этой группы\n\n" +
+    `Статус: ${groupEnabled(ctx) ? "ответы включены" : "ответы выключены"}\n` +
+    (admin ? "Администратор может включить или выключить ответы командами /group_on и /group_off.\n" : "Изменять режим могут только администраторы.\n") +
+    "Для получения всех обычных сообщений отключи Privacy Mode: @BotFather → /setprivacy → выбери бота → Disable. Затем удали бота из группы и добавь снова. Учитывай согласие участников."
+  );
+});
+
+async function setGroupMode(ctx, enabled) {
+  if (!isGroup(ctx)) return ctx.reply("Эта команда работает только в группе.");
+  if (!(await isGroupAdmin(ctx).catch(() => false))) {
+    return ctx.reply("Менять настройки группы могут только администраторы.");
+  }
+  groupSettings.set(ctx.chat.id, enabled);
+  return ctx.reply(enabled ? "✅ STUDY AI включён в этой группе." : "⏸ STUDY AI выключен в этой группе.");
+}
+bot.command("group_on", ctx => setGroupMode(ctx, true));
+bot.command("group_off", ctx => setGroupMode(ctx, false));
+
 bot.command("summary", ctx => {
-  waitingForSearch.delete(requestKey(ctx));
-  waitingForExplain.delete(requestKey(ctx));
-  return ctx.reply("Пришли фотографию, документ или текст ответом на это сообщение — подготовлю конспект.");
+  const key = requestKey(ctx);
+  waitingForSearch.delete(key);
+  waitingForExplain.delete(key);
+  return ctx.reply("Пришли фотографию, документ или текст — подготовлю краткий конспект.");
 });
 bot.command("search", ctx => {
   waitingForSearch.add(requestKey(ctx));
@@ -85,74 +107,78 @@ bot.command("explain", ctx => {
   waitingForExplain.add(requestKey(ctx));
   return ctx.reply("Напиши тему или термин, который нужно объяснить простыми словами.");
 });
+
 bot.hears("📝 Сделать конспект", ctx => ctx.reply("Пришли фотографию, документ или текст."));
 bot.hears("🌐 Поиск по теме", ctx => {
-  waitingForSearch.add(ctx.from.id);
+  waitingForSearch.add(requestKey(ctx));
   return ctx.reply("Напиши тему для поиска в интернете.");
 });
 bot.hears("💡 Объяснить тему", ctx => {
-  waitingForExplain.add(ctx.from.id);
-  return ctx.reply("Напиши тему или термин.");
+  waitingForExplain.add(requestKey(ctx));
+  return ctx.reply("Напиши тему или термин."));
 });
-bot.hears("⚙️ Настройки чата", ctx => ctx.reply(
-  "⚙️ Настройки чата\n\nВ личном чате можно отправлять материалы напрямую. В группах я отвечаю на команды и на сообщения-ответы мне.\n\nКоманды: /summary, /search, /explain, /help."
-));
+bot.hears("⚙️ Настройки чата", ctx => ctx.reply("В группе используй /settings. Администраторы могут использовать /group_on и /group_off."));
 bot.hears("❔ Помощь", sendHelp);
 
+async function downloadTelegramFile(ctx, fileId) {
+  const fileUrl = await ctx.telegram.getFileLink(fileId);
+  const response = await fetch(fileUrl.href || fileUrl);
+  if (!response.ok) throw new Error("Telegram file download failed");
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length > maxFileBytes) throw new Error("File too large");
+  return buffer;
+}
+
 bot.on("photo", ctx => {
-  if (ctx.chat.type !== "private" &&
-      ctx.message.reply_to_message?.from?.id !== bot.botInfo?.id) return;
+  if (isGroup(ctx) && !groupEnabled(ctx)) return;
   const photo = ctx.message.photo.at(-1);
   return withBusy(ctx, async () => {
-    const fileUrl = await ctx.telegram.getFileLink(photo.file_id);
-    const response = await fetch(fileUrl.href || fileUrl);
-    if (!response.ok) throw new Error("Telegram file download failed");
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > maxFileBytes) throw new Error("File too large");
+    const buffer = await downloadTelegramFile(ctx, photo.file_id);
     return analyzeImage(buffer, "image/jpeg");
   });
 });
 
 bot.on("document", ctx => {
-  if (ctx.chat.type !== "private" &&
-      ctx.message.reply_to_message?.from?.id !== bot.botInfo?.id) return;
+  if (isGroup(ctx) && !groupEnabled(ctx)) return;
   const doc = ctx.message.document;
   if (doc.file_size && doc.file_size > maxFileBytes) {
     return ctx.reply("Файл слишком большой. Максимальный размер задаётся настройкой MAX_FILE_MB.");
   }
   return withBusy(ctx, async () => {
-    const fileUrl = await ctx.telegram.getFileLink(doc.file_id);
-    const response = await fetch(fileUrl.href || fileUrl);
-    if (!response.ok) throw new Error("Telegram file download failed");
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const content = await extractDocument(buffer, doc.file_name || "");
-    if (!content.trim()) return "Текст не найден. Если PDF состоит из сканов, отправь страницы фотографиями.";
-    return createTextAnswer(content);
+    const buffer = await downloadTelegramFile(ctx, doc.file_id);
+    const extracted = await extractDocument(buffer, doc.file_name || "");
+    if (!extracted.trim()) return "Текст не найден. Если PDF состоит из сканов, отправь страницы фотографиями.";
+    return createTextAnswer(extracted);
   });
 });
 
 bot.on("text", ctx => {
-  const userId = ctx.from.id;
-  const text = ctx.message.text.trim();
+  if (isGroup(ctx) && !groupEnabled(ctx)) return;
+  const key = requestKey(ctx);
+  let text = ctx.message.text.trim();
   if (text.startsWith("/")) return;
 
-  // In groups, do not process every message by default. Handle only replies to the bot.
-  if (ctx.chat.type !== "private") {
-    const reply = ctx.message.reply_to_message;
-    if (!reply || reply.from?.id !== bot.botInfo?.id) return;
+  // In groups, process messages delivered by Telegram. With Privacy Mode enabled,
+  // Telegram normally delivers commands, mentions and replies to the bot only.
+  if (isGroup(ctx) && bot.botInfo?.username) {
+    const mention = new RegExp(`@${bot.botInfo.username}\\b`, "ig");
+    text = text.replace(mention, "").trim();
+    if (!text && !ctx.message.reply_to_message) return;
   }
-  if (waitingForSearch.has(userId)) {
-    waitingForSearch.delete(userId);
+
+  if (waitingForSearch.has(key)) {
+    waitingForSearch.delete(key);
     return withBusy(ctx, async () => {
       const sources = await searchWeb(text);
       if (!sources.length) return "Интернет-поиск не настроен. Добавь TAVILY_API_KEY в переменные окружения.";
       return createTextAnswer(`Подготовь краткий конспект по теме: ${text}`, sources);
     });
   }
-  if (waitingForExplain.has(userId)) {
-    waitingForExplain.delete(userId);
+  if (waitingForExplain.has(key)) {
+    waitingForExplain.delete(key);
     return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${text}. Добавь короткий пример.`));
   }
+  if (!text) return;
   return withBusy(ctx, () => createTextAnswer(text));
 });
 
@@ -171,30 +197,21 @@ const server = http.createServer((req, res) => {
   res.end(JSON.stringify({ status: "ok", app: "STUDY AI" }));
 });
 server.listen(port, () => console.log(`Health server listening on ${port}`));
+
 async function registerCommands() {
-  await bot.telegram.setMyCommands(commandList, {
-    scope: { type: "default" },
-    language_code: "ru"
-  });
-  await bot.telegram.setMyCommands(commandList, {
-    scope: { type: "all_private_chats" },
-    language_code: "ru"
-  });
-  await bot.telegram.setMyCommands(commandList, {
-    scope: { type: "all_group_chats" },
-    language_code: "ru"
-  });
+  await bot.telegram.setMyCommands(commandList, { scope: { type: "default" }, language_code: "ru" });
+  await bot.telegram.setMyCommands(commandList, { scope: { type: "all_private_chats" }, language_code: "ru" });
+  await bot.telegram.setMyCommands(commandList, { scope: { type: "all_group_chats" }, language_code: "ru" });
   console.log("Telegram command menu registered");
 }
 
-bot.launch()
-  .then(async () => {
-    console.log("STUDY AI Telegram bot is running");
-    try {
-      await registerCommands();
-    } catch (error) {
-      console.error("Could not register Telegram command menu:", error.message);
-    }
-  });
+bot.launch().then(async () => {
+  console.log("STUDY AI Telegram bot is running");
+  try {
+    await registerCommands();
+  } catch (error) {
+    console.error("Could not register Telegram command menu:", error.message);
+  }
+});
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
