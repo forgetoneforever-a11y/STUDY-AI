@@ -10,8 +10,18 @@ const waitingForSearch = new Set();
 const waitingForExplain = new Set();
 const keyboard = Markup.keyboard([
   ["📝 Сделать конспект", "🌐 Поиск по теме"],
-  ["💡 Объяснить тему", "❔ Помощь"]
+  ["💡 Объяснить тему", "⚙️ Настройки чата"],
+  ["❔ Помощь"]
 ]).resize();
+
+const commandList = [
+  { command: "start", description: "Запустить STUDY AI" },
+  { command: "summary", description: "Сделать краткий конспект" },
+  { command: "search", description: "Найти материалы по теме" },
+  { command: "explain", description: "Объяснить тему простыми словами" },
+  { command: "settings", description: "Настройки работы в чате" },
+  { command: "help", description: "Помощь и список команд" }
+];
 
 async function sendLong(ctx, value) {
   const limit = 3900;
@@ -43,6 +53,12 @@ bot.start(ctx => ctx.reply(
   keyboard
 ));
 bot.help(sendHelp);
+bot.command("settings", ctx => ctx.reply(
+  "⚙️ Настройки STUDY AI в чатах\n\n" +
+  "Личный чат: отправляй текст, фотографии и документы обычными сообщениями.\n\n" +
+  "Групповой чат: по умолчанию я отвечаю на команды /summary, /search, /explain и на сообщения, отправленные ответом на моё сообщение. Так я не засоряю общий чат.\n\n" +
+  "Чтобы я видел все обычные сообщения группы, администратор может отключить Privacy Mode через @BotFather → /setprivacy → выбрать бота → Disable. После этого меня нужно удалить из группы и добавить снова. Используй этот режим только если участники согласны."
+));
 bot.command("summary", ctx => ctx.reply("Пришли фотографию, документ или текст — подготовлю краткий конспект."));
 bot.command("search", ctx => {
   waitingForSearch.add(ctx.from.id);
@@ -61,6 +77,9 @@ bot.hears("💡 Объяснить тему", ctx => {
   waitingForExplain.add(ctx.from.id);
   return ctx.reply("Напиши тему или термин.");
 });
+bot.hears("⚙️ Настройки чата", ctx => ctx.reply(
+  "⚙️ Настройки чата\n\nВ личном чате можно отправлять материалы напрямую. В группах я отвечаю на команды и на сообщения-ответы мне.\n\nКоманды: /summary, /search, /explain, /help."
+));
 bot.hears("❔ Помощь", sendHelp);
 
 bot.on("photo", ctx => {
@@ -95,6 +114,12 @@ bot.on("text", ctx => {
   const userId = ctx.from.id;
   const text = ctx.message.text.trim();
   if (text.startsWith("/")) return;
+
+  // In groups, do not process every message by default. Handle only replies to the bot.
+  if (ctx.chat.type !== "private") {
+    const reply = ctx.message.reply_to_message;
+    if (!reply || reply.from?.id !== bot.botInfo?.id) return;
+  }
   if (waitingForSearch.has(userId)) {
     waitingForSearch.delete(userId);
     return withBusy(ctx, async () => {
@@ -125,6 +150,30 @@ const server = http.createServer((req, res) => {
   res.end(JSON.stringify({ status: "ok", app: "STUDY AI" }));
 });
 server.listen(port, () => console.log(`Health server listening on ${port}`));
-bot.launch().then(() => console.log("STUDY AI Telegram bot is running"));
+async function registerCommands() {
+  await bot.telegram.setMyCommands(commandList, {
+    scope: { type: "default" },
+    language_code: "ru"
+  });
+  await bot.telegram.setMyCommands(commandList, {
+    scope: { type: "all_private_chats" },
+    language_code: "ru"
+  });
+  await bot.telegram.setMyCommands(commandList, {
+    scope: { type: "all_group_chats" },
+    language_code: "ru"
+  });
+  console.log("Telegram command menu registered");
+}
+
+bot.launch()
+  .then(async () => {
+    console.log("STUDY AI Telegram bot is running");
+    try {
+      await registerCommands();
+    } catch (error) {
+      console.error("Could not register Telegram command menu:", error.message);
+    }
+  });
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
