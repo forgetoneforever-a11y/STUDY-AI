@@ -83,6 +83,8 @@ bot.hears("⚙️ Настройки чата", ctx => ctx.reply(
 bot.hears("❔ Помощь", sendHelp);
 
 bot.on("photo", ctx => {
+  if (ctx.chat.type !== "private" &&
+      ctx.message.reply_to_message?.from?.id !== bot.botInfo?.id) return;
   const photo = ctx.message.photo.at(-1);
   return withBusy(ctx, async () => {
     const fileUrl = await ctx.telegram.getFileLink(photo.file_id);
@@ -95,6 +97,8 @@ bot.on("photo", ctx => {
 });
 
 bot.on("document", ctx => {
+  if (ctx.chat.type !== "private" &&
+      ctx.message.reply_to_message?.from?.id !== bot.botInfo?.id) return;
   const doc = ctx.message.document;
   if (doc.file_size && doc.file_size > maxFileBytes) {
     return ctx.reply("Файл слишком большой. Максимальный размер задаётся настройкой MAX_FILE_MB.");
