@@ -8,6 +8,17 @@ const { extractDocument } = require("./documents");
 const bot = new Telegraf(botToken);
 const waitingForSearch = new Set();
 const waitingForExplain = new Set();
+const groupSettings = new Map(); // Defaults to enabled; admin changes last until the process restarts.
+const isGroup = ctx => ctx.chat.type === "group" || ctx.chat.type === "supergroup";
+const groupEnabled = ctx => groupSettings.get(ctx.chat.id) !== false;
+const requestKey = ctx => `${ctx.chat.id}:${ctx.from.id}`;
+async function isGroupAdmin(ctx) {
+  if (!isGroup(ctx)) return true;
+  const member = await ctx.telegram.getChatMember(ctx.chat.id, ctx.from.id);
+  return ["creator", "administrator"].includes(member.status);
+}
+function groupHelpText() {
+  return "Команды группы:\n/summary — конспект материала\n/explain — объяснить тему\n/search — поиск материалов\n/settings — настройки группы\n/group_on — включить ответы (администратор)\n/group_off — выключить ответы (администратор)\n\nМожно написать @имя_бота и вопрос или ответить на сообщение бота.";
 const keyboard = Markup.keyboard([
   ["📝 Сделать конспект", "🌐 Поиск по теме"],
   ["💡 Объяснить тему", "⚙️ Настройки чата"],
@@ -20,6 +31,8 @@ const commandList = [
   { command: "search", description: "Найти материалы по теме" },
   { command: "explain", description: "Объяснить тему простыми словами" },
   { command: "settings", description: "Настройки работы в чате" },
+  { command: "group_on", description: "Разрешить ответы в группе (админ)" },
+  { command: "group_off", description: "Отключить ответы в группе (админ)" },
   { command: "help", description: "Помощь и список команд" }
 ];
 
@@ -43,7 +56,7 @@ async function withBusy(ctx, task) {
 }
 async function sendHelp(ctx) {
   return ctx.reply(
-    "Как пользоваться STUDY AI:\n\n• Отправь фото страницы.\n• Прикрепи PDF, DOCX или TXT.\n• Напиши тему обычным сообщением.\n• Выбери поиск, чтобы найти дополнительные материалы.\n\nКоманды: /start, /summary, /search, /explain, /help",
+    "Как пользоваться STUDY AI:\n\n• Отправь фото страницы.\n• Прикрепи PDF, DOCX или TXT.\n• Напиши тему обычным сообщением.\n• Выбери поиск, чтобы найти дополнительные материалы.\n\nКоманды: /start, /summary, /search, /explain, /settings, /help.\\n\\n" + groupHelpText(),
     keyboard
   );
 }
@@ -59,13 +72,17 @@ bot.command("settings", ctx => ctx.reply(
   "Групповой чат: по умолчанию я отвечаю на команды /summary, /search, /explain и на сообщения, отправленные ответом на моё сообщение. Так я не засоряю общий чат.\n\n" +
   "Чтобы я видел все обычные сообщения группы, администратор может отключить Privacy Mode через @BotFather → /setprivacy → выбрать бота → Disable. После этого меня нужно удалить из группы и добавить снова. Используй этот режим только если участники согласны."
 ));
-bot.command("summary", ctx => ctx.reply("Пришли фотографию, документ или текст — подготовлю краткий конспект."));
+bot.command("summary", ctx => {
+  waitingForSearch.delete(requestKey(ctx));
+  waitingForExplain.delete(requestKey(ctx));
+  return ctx.reply("Пришли фотографию, документ или текст ответом на это сообщение — подготовлю конспект.");
+});
 bot.command("search", ctx => {
-  waitingForSearch.add(ctx.from.id);
+  waitingForSearch.add(requestKey(ctx));
   return ctx.reply("Напиши тему, по которой нужно найти материалы.");
 });
 bot.command("explain", ctx => {
-  waitingForExplain.add(ctx.from.id);
+  waitingForExplain.add(requestKey(ctx));
   return ctx.reply("Напиши тему или термин, который нужно объяснить простыми словами.");
 });
 bot.hears("📝 Сделать конспект", ctx => ctx.reply("Пришли фотографию, документ или текст."));
