@@ -141,7 +141,7 @@ bot.hears("🌐 Поиск по теме", ctx => {
 });
 bot.hears("💡 Объяснить тему", ctx => {
   waitingForExplain.add(requestKey(ctx));
-  return ctx.reply("Напиши тему или термин."));
+  return ctx.reply("Напиши тему или термин.");
 });
 bot.hears("⚙️ Настройки чата", ctx => ctx.reply("В группе используй /settings. Администраторы могут использовать /group_on и /group_off."));
 bot.hears("❔ Помощь", sendHelp);
