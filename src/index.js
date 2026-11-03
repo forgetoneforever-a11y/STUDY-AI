@@ -117,6 +117,10 @@ bot.catch((error, ctx) => {
 
 const port = Number(process.env.PORT) || 3000;
 const server = http.createServer((req, res) => {
+  if (req.url !== "/health" && req.url !== "/") {
+    res.writeHead(404);
+    return res.end("Not found");
+  }
   res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify({ status: "ok", app: "STUDY AI" }));
 });
