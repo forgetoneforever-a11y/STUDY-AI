@@ -94,7 +94,9 @@ bot.command("group_on", ctx => setGroupMode(ctx, true));
 bot.command("group_off", ctx => setGroupMode(ctx, false));
 
 function commandArgument(ctx) {
-  return ctx.message.text.replace(/^\\/\\w+(?:@\\w+)?\\s*/i, "").trim();
+  const raw = ctx.message.text.trim();
+  const firstSpace = raw.indexOf(" ");
+  return firstSpace === -1 ? "" : raw.slice(firstSpace + 1).trim();
 }
 
 bot.command("summary", ctx => {
