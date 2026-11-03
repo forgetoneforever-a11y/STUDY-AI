@@ -93,19 +93,43 @@ async function setGroupMode(ctx, enabled) {
 bot.command("group_on", ctx => setGroupMode(ctx, true));
 bot.command("group_off", ctx => setGroupMode(ctx, false));
 
+function commandArgument(ctx) {
+  return ctx.message.text.replace(/^\\/\\w+(?:@\\w+)?\\s*/i, "").trim();
+}
+
 bot.command("summary", ctx => {
+  const topic = commandArgument(ctx);
   const key = requestKey(ctx);
   waitingForSearch.delete(key);
   waitingForExplain.delete(key);
+  if (topic) return withBusy(ctx, () => createTextAnswer(topic));
   return ctx.reply("Пришли фотографию, документ или текст — подготовлю краткий конспект.");
 });
+
 bot.command("search", ctx => {
-  waitingForSearch.add(requestKey(ctx));
-  return ctx.reply("Напиши тему, по которой нужно найти материалы.");
+  const topic = commandArgument(ctx);
+  const key = requestKey(ctx);
+  if (!topic) {
+    waitingForSearch.add(key);
+    return ctx.reply("Напиши тему, по которой нужно найти материалы.");
+  }
+  return withBusy(ctx, async () => {
+    const sources = await searchWeb(topic);
+    if (!sources.length) return "Не удалось найти материалы. Проверь настройку TAVILY_API_KEY.";
+    return createTextAnswer(`Подготовь краткий конспект по теме: ${topic}`, sources);
+  });
 });
+
 bot.command("explain", ctx => {
-  waitingForExplain.add(requestKey(ctx));
-  return ctx.reply("Напиши тему или термин, который нужно объяснить простыми словами.");
+  const topic = commandArgument(ctx);
+  const key = requestKey(ctx);
+  if (!topic) {
+    waitingForExplain.add(key);
+    return ctx.reply("Напиши тему или термин, который нужно объяснить простыми словами.");
+  }
+  waitingForExplain.delete(key);
+  waitingForSearch.delete(key);
+  return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${topic}. Добавь короткий пример.`));
 });
 
 bot.hears("📝 Сделать конспект", ctx => ctx.reply("Пришли фотографию, документ или текст."));
