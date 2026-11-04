@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#090909"><title>STUDY AI</title><link rel="stylesheet" href="/styles.css"></head>
+<body><div class="app-shell">
+<header class="topbar"><div class="brand-mark">S</div><div><div class="brand">STUDY AI</div><div class="subbrand">Твой персональный учебный помощник</div></div><span class="online"><i></i> ONLINE</span></header>
+<main id="home" class="screen active"><section class="hero"><p class="eyebrow">УЧИСЬ ПРОЩЕ</p><h1>Что будем<br><span>изучать сегодня?</span></h1><p class="muted">Выбери инструмент или задай свой вопрос.</p></section>
+<section class="tools-grid">
+<button class="tool" data-mode="solve"><span class="ico">▦</span><b>Решить задачу</b><small>Решение по шагам</small></button>
+<button class="tool" data-mode="summary"><span class="ico">▤</span><b>Конспект</b><small>Только главное</small></button>
+<button class="tool" data-mode="explain"><span class="ico">✧</span><b>Репетитор</b><small>Простое объяснение</small></button>
+<button class="tool" data-mode="test"><span class="ico">☑</span><b>Тесты</b><small>Проверь знания</small></button>
+<button class="tool" data-mode="check"><span class="ico">⌕</span><b>Проверить решение</b><small>Найти ошибки</small></button>
+<button class="tool" data-mode="cards"><span class="ico">▱</span><b>Карточки</b><small>Повторение</small></button>
+<button class="tool" data-mode="schemes"><span class="ico">▧</span><b>Схемы</b><small>Структура темы</small></button>
+<button class="tool" data-mode="library"><span class="ico">▥</span><b>Моя библиотека</b><small>Материалы и файлы</small></button>
+</section>
+<section class="quick"><textarea id="question" rows="1" placeholder="Напиши свой вопрос..."></textarea><button id="send" class="send" aria-label="Отправить">➤</button></section>
+<div class="upload-row"><label class="upload">＋ Прикрепить файл<input id="file" type="file" accept="image/*,.pdf,.docx,.txt,.md"></label><span>Фото, PDF, DOCX, TXT</span></div></main>
+<section id="workspace" class="screen"><button id="back" class="back">← Назад</button><div class="workspace-head"><p class="eyebrow" id="mode-label">STUDY AI</p><h2 id="workspace-title">Задай вопрос</h2><p class="muted" id="workspace-hint">Я помогу разобраться.</p></div><div id="messages" class="messages"><div class="welcome-msg">Привет! Напиши вопрос или прикрепи учебный материал.</div></div><div class="composer"><textarea id="workspace-question" rows="1" placeholder="Напиши сообщение..."></textarea><label class="attach">＋<input id="workspace-file" type="file" accept="image/*,.pdf,.docx,.txt,.md"></label><button id="workspace-send" class="send">➤</button></div></section>
+<nav class="bottom-nav"><button class="nav active" data-screen="home"><span>⌂</span>Главная</button><button class="nav" data-screen="workspace"><span>◷</span>История</button><button class="nav" id="profile"><span>○</span>Профиль</button></nav>
+<div id="toast" class="toast"></div></div><script src="https://telegram.org/js/telegram-web-app.js"></script><script src="/app.js"></script></body></html>
