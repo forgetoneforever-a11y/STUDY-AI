@@ -231,7 +231,8 @@ app.post("/api/ask", requireTelegramUser, async (req, res) => {
       if (!sources.length) return res.status(503).json({ error: "Поиск не настроен. Добавь TAVILY_API_KEY на сервере." });
       answer = await createTextAnswer(`Подготовь краткий ответ по теме: ${question}`, sources);
     } else answer = await createTextAnswer(question);
-    res.json({ answer });
+    const images = ["solve"].includes(mode) ? [] : await findTopicImages(question, 2).catch(error => { console.warn("Topic image search failed:", error.message); return []; });
+    res.json({ answer, images });
   } catch (error) {
     console.error("Mini App AI error:", error);
     res.status(500).json({ error: "Не удалось получить ответ. Попробуй ещё раз." });
@@ -248,6 +249,8 @@ app.post("/api/upload", requireTelegramUser, upload.single("file"), async (req, 
       const content = await extractDocument(req.file.buffer, name);
       if (!content.trim()) return res.status(422).json({ error: "В документе не найден текст. Сканированные PDF отправляй как изображения страниц." });
       answer = await createTextAnswer(content);
+      const images = await findTopicImages(content.slice(0, 500), 2).catch(error => { console.warn("Topic image search failed:", error.message); return []; });
+      return res.json({ answer, images });
     }
     res.json({ answer });
   } catch (error) {
