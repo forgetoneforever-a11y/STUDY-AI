@@ -29,3 +29,5 @@ body{min-height:100dvh}
 .bottom-nav{z-index:5;padding-bottom:calc(9px + env(safe-area-inset-bottom))}
 .toast{z-index:10;bottom:calc(82px + env(safe-area-inset-bottom))}
 @media(min-width:600px){.app-shell{padding-top:24px}.messages{padding-left:8px;padding-right:8px}}
+
+.topic-image{margin:0 0 12px;background:#171717;border:1px solid #303030;border-radius:16px;overflow:hidden;padding:8px}.topic-image img{display:block;width:100%;max-height:320px;object-fit:contain;border-radius:11px;background:#0d0d0d}.topic-image figcaption{font-size:11px;color:#aaa;padding:8px 4px 2px}.topic-image a{display:inline-block;font-size:11px;color:#c8c8c8;padding:3px 4px 5px;text-decoration:underline}
