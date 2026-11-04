@@ -7,6 +7,7 @@ const { botToken, maxFileBytes } = require("./config");
 const { createTextAnswer, createSolution, analyzeImage } = require("./ai");
 const { searchWeb } = require("./search");
 const { extractDocument } = require("./documents");
+const { findTopicImages } = require("./images");
 
 const bot = new Telegraf(botToken);
 const waitingForSearch = new Set();
@@ -47,12 +48,22 @@ async function sendLong(ctx, value) {
   const limit = 3900;
   for (let i = 0; i < value.length; i += limit) await ctx.reply(value.slice(i, i + limit), { disable_web_page_preview: true });
 }
-async function withBusy(ctx, task) {
+async function withBusy(ctx, task, imageTopic = "") {
   const status = await ctx.reply("⏳ STUDY AI анализирует материал…");
   try {
     const result = await task();
     await ctx.telegram.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
-    await sendLong(ctx, String(result || "Не удалось подготовить ответ."));
+    const answer = typeof result === "string" ? result : String(result?.text || "Не удалось подготовить ответ.");
+    await sendLong(ctx, answer);
+    if (imageTopic) {
+      try {
+        const images = await findTopicImages(imageTopic, 2);
+        for (const image of images) {
+          const caption = [image.title, image.license ? `Лицензия: ${image.license}` : "", image.pageUrl].filter(Boolean).join("\\n").slice(0, 900);
+          await ctx.replyWithPhoto({ url: image.url }, { caption });
+        }
+      } catch (imageError) { console.warn("Topic image search failed:", imageError.message); }
+    }
   } catch (error) {
     console.error(error);
     await ctx.telegram.deleteMessage(ctx.chat.id, status.message_id).catch(() => {});
@@ -90,7 +101,7 @@ function commandArgument(ctx) {
 bot.command("summary", ctx => {
   const topic = commandArgument(ctx), key = requestKey(ctx);
   waitingForSearch.delete(key); waitingForExplain.delete(key);
-  if (topic) return withBusy(ctx, () => createTextAnswer(topic));
+  if (topic) return withBusy(ctx, () => createTextAnswer(topic), topic);
   return ctx.reply("Пришли фотографию, документ или текст — подготовлю краткий конспект.");
 });
 bot.command("search", ctx => {
@@ -106,7 +117,7 @@ bot.command("explain", ctx => {
   const topic = commandArgument(ctx), key = requestKey(ctx);
   if (!topic) { waitingForExplain.add(key); return ctx.reply("Напиши тему или термин, который нужно объяснить простыми словами."); }
   waitingForExplain.delete(key); waitingForSearch.delete(key);
-  return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${topic}. Добавь короткий пример.`));
+  return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${topic}. Добавь короткий пример.`), topic);
 });
 bot.command("solve", ctx => {
   const problem = commandArgument(ctx), key = requestKey(ctx);
@@ -168,9 +179,9 @@ bot.on("text", ctx => {
       return createTextAnswer(`Подготовь краткий конспект по теме: ${text}`, sources);
     });
   }
-  if (waitingForExplain.has(key)) { waitingForExplain.delete(key); return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${text}. Добавь короткий пример.`)); }
+  if (waitingForExplain.has(key)) { waitingForExplain.delete(key); return withBusy(ctx, () => createTextAnswer(`Объясни простыми словами тему: ${text}. Добавь короткий пример.`), text); }
   if (waitingForSolve.has(key)) { waitingForSolve.delete(key); return withBusy(ctx, () => createSolution(text)); }
-  if (text) return withBusy(ctx, () => createTextAnswer(text));
+  if (text) return withBusy(ctx, () => createTextAnswer(text), text);
 });
 bot.catch((error, ctx) => {
   console.error("Telegram bot error", error);
