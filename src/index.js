@@ -252,6 +252,18 @@ async function registerCommands() {
   await bot.telegram.setMyCommands(commandList, { scope: { type: "default" }, language_code: "ru" });
   await bot.telegram.setMyCommands(commandList, { scope: { type: "all_private_chats" }, language_code: "ru" });
   await bot.telegram.setMyCommands(commandList, { scope: { type: "all_group_chats" }, language_code: "ru" });
+  if (webAppUrl) {
+    try {
+      await bot.telegram.setChatMenuButton({
+        type: "web_app",
+        text: "App",
+        web_app: { url: webAppUrl }
+      });
+      console.log("Telegram App menu button registered");
+    } catch (error) {
+      console.error("Could not register Telegram App menu button:", error.message);
+    }
+  }
   console.log("Telegram command menu registered");
 }
 bot.launch().then(async () => {
