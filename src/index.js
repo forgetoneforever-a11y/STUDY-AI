@@ -272,6 +272,8 @@ app.post("/api/upload", requireTelegramUser, upload.single("file"), async (req, 
     res.status(400).json({ error: "Не удалось обработать файл. Поддерживаются изображения, PDF, DOCX, TXT и MD." });
   }
 });
+const webhookSecret = crypto.createHmac("sha256", botToken).update("STUDY-AI-telegram-webhook").digest("hex");
+app.use(bot.webhookCallback("/telegram/webhook", { secretToken: webhookSecret }));
 app.get("*", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 const port = Number(process.env.PORT) || 3000;
 app.listen(port, () => console.log(`STUDY AI web server listening on ${port}`));
@@ -294,9 +296,23 @@ async function registerCommands() {
   }
   console.log("Telegram command menu registered");
 }
-bot.launch().then(async () => {
-  console.log("STUDY AI Telegram bot is running");
-  try { await registerCommands(); } catch (error) { console.error("Could not register Telegram command menu:", error.message); }
-}).catch(error => console.error("Telegram polling failed:", error));
+async function startTelegram() {
+  const publicUrl = (process.env.TELEGRAM_WEBHOOK_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\\/+$/, "");
+  if (publicUrl) {
+    const webhookUrl = `${publicUrl}/telegram/webhook`;
+    await bot.telegram.setWebhook(webhookUrl, {
+      secret_token: webhookSecret,
+      allowed_updates: ["message", "callback_query"]
+    });
+    console.log("STUDY AI Telegram webhook registered:", webhookUrl);
+    await registerCommands();
+    return;
+  }
+
+  await bot.launch();
+  console.log("STUDY AI Telegram bot is running in polling mode");
+  await registerCommands();
+}
+startTelegram().catch(error => console.error("Telegram startup failed:", error));
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
