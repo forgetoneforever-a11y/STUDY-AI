@@ -43,3 +43,10 @@ body{min-height:100dvh}
 .history-empty{color:#858585;text-align:center;padding:40px 20px;border:1px dashed #333;border-radius:16px;line-height:1.5}
 .topic-image{width:100%;max-width:100%;min-width:0}.topic-image img{width:100%;height:auto;max-height:280px;object-fit:contain}
 .messages{scroll-padding-bottom:18px}.bubble.ai{overflow-wrap:anywhere}
+
+/* Context-aware chat toolbar */
+.chat-toolbar{width:100%;gap:10px;margin:0 0 4px}
+.chat-toolbar .back,.chat-toolbar .new-chat{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;padding:0 15px;font-size:13px;line-height:1;white-space:nowrap}
+.chat-toolbar .back{background:#191919;border:1px solid #303030;color:#ddd}
+.chat-toolbar .new-chat{background:linear-gradient(145deg,#292929,#1d1d1d);border:1px solid #3a3a3a;color:#f4f4f4;box-shadow:0 4px 14px #0005}
+.chat-toolbar .new-chat:active,.chat-toolbar .back:active{transform:scale(.97)}
