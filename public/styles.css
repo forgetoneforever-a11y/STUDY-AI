@@ -67,3 +67,25 @@ body{min-height:100dvh}
 }
 .topic-image figcaption{padding:9px 3px 2px;line-height:1.4}
 .topic-image a{margin:4px 2px 2px}
+
+/* Spacious focused chat view */
+body:has(#workspace.screen.active) .topbar{display:none}
+.app-shell:has(#workspace.screen.active){
+ padding-top:max(8px,env(safe-area-inset-top));
+ padding-left:12px;padding-right:12px;
+}
+#workspace.screen.active{gap:0}
+.chat-toolbar{padding:2px 1px 8px;margin-bottom:0}
+.workspace-head{padding:4px 2px 8px}
+.workspace-head .eyebrow{display:none}
+.workspace-head h2{font-size:24px;line-height:1.15;margin:3px 0 5px}
+.workspace-head .muted{font-size:12px;margin-top:2px}
+.messages{padding:8px 1px 16px;gap:9px}
+.bubble,.welcome-msg{font-size:13px;line-height:1.45;padding:11px 13px}
+.bubble.ai{font-size:12.5px;line-height:1.42}
+.bubble.ai p{margin-bottom:6px}
+.bubble.ai ul,.bubble.ai ol{margin:4px 0 7px;padding-left:18px}
+.bubble.ai li{margin:2px 0}
+.bubble.ai h3{font-size:13px;margin:8px 0 4px}
+.topic-image{flex:0 0 auto}
+.composer{margin-top:6px;margin-bottom:2px}
