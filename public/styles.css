@@ -89,3 +89,23 @@ body:has(#workspace.screen.active) .topbar{display:none}
 .bubble.ai h3{font-size:13px;margin:8px 0 4px}
 .topic-image{flex:0 0 auto}
 .composer{margin-top:6px;margin-bottom:2px}
+
+/* Student profile */
+.profile-screen{overflow-y:auto!important;padding:8px 1px 20px;gap:14px}
+.profile-head{padding:4px 2px 2px}.profile-head h2{font-size:28px;margin:6px 0}
+.profile-card{display:flex;align-items:center;gap:12px;padding:17px;border:1px solid #303030;border-radius:20px;background:linear-gradient(145deg,#222,#141414)}
+.profile-avatar{width:54px;height:54px;flex:0 0 54px;display:grid;place-items:center;border-radius:18px;background:#f1f1f1;color:#080808;font-size:27px;font-weight:850}
+.profile-identity{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}.profile-identity b{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.profile-identity span,.profile-identity small{font-size:11px;color:#888}
+.profile-status{font-size:9px;color:#56d99a;background:#10251a;border:1px solid #1b4b30;border-radius:20px;padding:7px 8px;white-space:nowrap}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.stat-card{display:flex;flex-direction:column;gap:5px;padding:15px 10px;border:1px solid #2d2d2d;background:#191919;border-radius:16px;text-align:center}
+.stat-card b{font-size:23px}.stat-card span{font-size:10px;color:#888}
+.profile-section{padding:15px;border:1px solid #2d2d2d;border-radius:17px;background:#151515}
+.section-title{font-size:9px;letter-spacing:1.7px;font-weight:800;color:#858585;margin-bottom:12px}
+.activity-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #292929;font-size:12px}
+.activity-row span{color:#999}.activity-row b{text-align:right;font-size:11px;max-width:55%;overflow:hidden;text-overflow:ellipsis}
+.profile-action{display:flex;width:100%;align-items:center;gap:12px;padding:12px 2px;border:0;border-top:1px solid #292929;background:transparent;color:#eee;text-align:left}
+.profile-action>span{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:#252525;font-size:18px}
+.profile-action div{display:flex;flex-direction:column;gap:4px}.profile-action b{font-size:12px}.profile-action small{font-size:10px;color:#888}
+.danger-action b{color:#e5a0a0}
+.profile-footnote{font-size:10px;line-height:1.5;color:#707070;padding:0 4px}
