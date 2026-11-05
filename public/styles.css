@@ -50,3 +50,20 @@ body{min-height:100dvh}
 .chat-toolbar .back{background:#191919;border:1px solid #303030;color:#ddd}
 .chat-toolbar .new-chat{background:linear-gradient(145deg,#292929,#1d1d1d);border:1px solid #3a3a3a;color:#f4f4f4;box-shadow:0 4px 14px #0005}
 .chat-toolbar .new-chat:active,.chat-toolbar .back:active{transform:scale(.97)}
+
+/* Fix image cards being vertically compressed inside the flex message list */
+.messages > .bubble,
+.messages > .topic-image,
+.messages > figure.topic-image { flex: 0 0 auto; min-height: max-content; }
+.messages > .topic-image {
+ display:block;width:100%;margin:2px 0 12px;padding:10px;
+ border:1px solid #353535;border-radius:17px;
+ background:linear-gradient(145deg,#202020,#141414);overflow:visible;
+}
+.topic-image img {
+ display:block;width:100%;height:auto;min-height:190px;max-height:360px;
+ aspect-ratio:4/3;object-fit:contain;object-position:center;
+ border-radius:11px;background:#0b0b0b;
+}
+.topic-image figcaption{padding:9px 3px 2px;line-height:1.4}
+.topic-image a{margin:4px 2px 2px}
