@@ -76,9 +76,10 @@ async function sendHelp(ctx) {
 bot.start(async ctx => {
   if (webAppUrl && ctx.chat.type === "private") {
     try {
-      await ctx.telegram.setChatMenuButton({
-        chat_id: ctx.chat.id,
-        menu_button: { type: "web_app", text: "Открыть", web_app: { url: webAppUrl } }
+      await ctx.telegram.setChatMenuButton(ctx.chat.id, {
+        type: "web_app",
+        text: "Открыть",
+        web_app: { url: webAppUrl }
       });
       console.log("Private chat Web App menu button registered:", ctx.chat.id);
     } catch (error) {
@@ -281,7 +282,7 @@ async function registerCommands() {
   await bot.telegram.setMyCommands(commandList, { scope: { type: "all_group_chats" }, language_code: "ru" });
   if (webAppUrl) {
     try {
-      await bot.telegram.setChatMenuButton({
+      await bot.telegram.setChatMenuButton(undefined, {
         type: "web_app",
         text: "Открыть",
         web_app: { url: webAppUrl }
