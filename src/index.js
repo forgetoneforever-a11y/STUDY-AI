@@ -73,10 +73,23 @@ async function withBusy(ctx, task, imageTopic = "") {
 async function sendHelp(ctx) {
   return ctx.reply("Как пользоваться STUDY AI:\n\n• Открой веб-приложение кнопкой ниже.\n• Отправь фото, документ или текст — подготовлю конспект.\n• Команды: /summary, /search, /explain, /solve.\n\nВ группе для обработки всех сообщений отключи Privacy Mode через @BotFather.", keyboard);
 }
-bot.start(ctx => ctx.reply(
-  "Привет! Я STUDY AI — твой учебный помощник.\n\nОткрой приложение, чтобы пользоваться всеми инструментами." ,
-  webAppUrl ? Markup.inlineKeyboard([[Markup.button.webApp("📚 Открыть STUDY AI", webAppUrl)]]) : keyboard
-));
+bot.start(async ctx => {
+  if (webAppUrl && ctx.chat.type === "private") {
+    try {
+      await ctx.telegram.setChatMenuButton({
+        chat_id: ctx.chat.id,
+        menu_button: { type: "web_app", text: "Открыть", web_app: { url: webAppUrl } }
+      });
+      console.log("Private chat Web App menu button registered:", ctx.chat.id);
+    } catch (error) {
+      console.error("Could not set private chat menu button:", error.message);
+    }
+  }
+  return ctx.reply(
+    "Привет! Я STUDY AI — твой учебный помощник.\n\nНажми «Открыть» слева от поля сообщения, чтобы запускать приложение в любой момент.",
+    webAppUrl ? Markup.inlineKeyboard([[Markup.button.webApp("📚 Открыть STUDY AI", webAppUrl)]]) : keyboard
+  );
+});
 bot.help(sendHelp);
 bot.command("settings", async ctx => {
   if (!isGroup(ctx)) return ctx.reply("Настройки группы доступны непосредственно в групповом чате.");
