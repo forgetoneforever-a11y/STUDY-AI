@@ -31,5 +31,36 @@ for(const id of ["question","workspace-question"]){const f=$(id);f.addEventListe
 function renderHistory(){const root=$("history-list");root.replaceChildren();if(!chats.length){const empty=document.createElement("div");empty.className="history-empty";empty.textContent="Здесь появятся твои разговоры. Начни новый чат.";root.append(empty);return}for(const c of [...chats].sort((a,b)=>b.updated-a.updated)){const row=document.createElement("div");row.className="history-row";const open=document.createElement("button");open.className="history-open";const name=document.createElement("b");name.textContent=c.title;const meta=document.createElement("small");meta.textContent=new Date(c.updated).toLocaleString("ru-RU",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})+" · "+c.messages.length+" сообщ.";open.append(name,meta);open.onclick=()=>{currentId=c.id;setMode(c.mode||"ask");renderChat();screen("workspace")};const del=document.createElement("button");del.className="history-delete";del.textContent="×";del.setAttribute("aria-label","Удалить чат");del.onclick=()=>{chats=chats.filter(x=>x.id!==c.id);if(currentId===c.id)currentId=null;saveChats();renderHistory()};row.append(open,del);root.append(row)}}
 async function uploadFile(file){if(!file)return;if(!tg?.initData){toast("Открой приложение через Telegram.");return}const allowed=/\.(pdf|docx|txt|md|png|jpe?g|webp)$/i;if(!allowed.test(file.name)){toast("Формат не поддерживается.");return}if(file.size>15*1024*1024){toast("Файл больше 15 МБ.");return}ensureChat(file.name);screen("workspace");appendMessage("user","Файл: "+file.name);const loading=addLoading();const form=new FormData();form.append("file",file);try{const r=await fetch("/api/upload",{method:"POST",headers:{"x-telegram-init-data":tg.initData},body:form});const data=await r.json();loading.remove();if(!r.ok)throw new Error(data.error||"Не удалось обработать файл");appendMessage("ai",data.answer||"Файл обработан",data.images||[])}catch(e){loading.remove();appendMessage("ai",e.message)}}
 $("file").onchange=e=>{uploadFile(e.target.files[0]);e.target.value=""};$("workspace-file").onchange=e=>{uploadFile(e.target.files[0]);e.target.value=""};
+
+function renderProfile(){
+ const user=tg?.initDataUnsafe?.user||{};
+ const fullName=[user.first_name,user.last_name].filter(Boolean).join(" ")||"Ученик";
+ $("profile-name").textContent=fullName;
+ $("profile-username").textContent=user.username?"@"+user.username:"Учебный профиль";
+ $("profile-avatar").textContent=(user.first_name||"S").slice(0,1).toUpperCase();
+ $("stat-chats").textContent=chats.length;
+ const all=chats.flatMap(c=>c.messages||[]);
+ $("stat-messages").textContent=all.length;
+ $("stat-files").textContent=all.filter(m=>String(m.text||"").startsWith("Файл: ")).length;
+ const counts={};chats.forEach(c=>{const k=c.mode||"ask";counts[k]=(counts[k]||0)+1});
+ const best=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+ const labels={solve:"Решение задач",summary:"Конспекты",explain:"Репетитор",search:"Поиск",test:"Тесты",check:"Проверка решений",cards:"Карточки",schemes:"Схемы",library:"Библиотека",ask:"Свободные вопросы"};
+ $("favorite-tool").textContent=best?(labels[best[0]]||"Свободные вопросы"):"Пока нет данных";
+ const last=[...chats].sort((x,y)=>y.updated-x.updated)[0];
+ $("last-chat").textContent=last?last.title:"Пока нет данных";
+}
+$("profile").onclick=()=>{renderProfile();screen("profile-screen")};
+$("export-history").onclick=()=>{
+ const data=chats.slice().sort((x,y)=>x.updated-y.updated).map(c=>"## "+c.title+" ("+new Date(c.updated).toLocaleString("ru-RU")+")\n"+(c.messages||[]).map(m=>(m.role==="user"?"Ты":"STUDY AI")+": "+(m.text||"")).join("\n\n")).join("\n\n--------------------\n\n");
+ if(!data){toast("История пока пустая.");return}
+ const blob=new Blob([data],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");
+ link.href=url;link.download="study-ai-history.txt";link.click();URL.revokeObjectURL(url);
+};
+$("clear-history").onclick=()=>{
+ if(!chats.length){toast("История уже пустая.");return}
+ if(!confirm("Удалить все сохранённые чаты на этом устройстве?"))return;
+ chats=[];currentId=null;saveChats();renderHistory();renderProfile();toast("История чатов очищена.");
+};
+
 renderHistory();
 })();
