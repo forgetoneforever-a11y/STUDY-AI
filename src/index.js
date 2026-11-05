@@ -297,7 +297,7 @@ async function registerCommands() {
   console.log("Telegram command menu registered");
 }
 async function startTelegram() {
-  const publicUrl = (process.env.TELEGRAM_WEBHOOK_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\\/+$/, "");
+  const publicUrl = (process.env.TELEGRAM_WEBHOOK_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\/+$/, "");
   if (publicUrl) {
     const webhookUrl = `${publicUrl}/telegram/webhook`;
     await bot.telegram.setWebhook(webhookUrl, {
