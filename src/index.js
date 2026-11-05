@@ -270,7 +270,7 @@ async function registerCommands() {
     try {
       await bot.telegram.setChatMenuButton({
         type: "web_app",
-        text: "App",
+        text: "Открыть",
         web_app: { url: webAppUrl }
       });
       console.log("Telegram App menu button registered");
