@@ -59,7 +59,7 @@ async function withBusy(ctx, task, imageTopic = "") {
       try {
         const images = await findTopicImages(imageTopic, 2);
         for (const image of images) {
-          const caption = [image.title, image.license ? `Лицензия: ${image.license}` : "", image.pageUrl].filter(Boolean).join("\\n").slice(0, 900);
+          const caption = [image.title, image.license ? `Лицензия: ${image.license}` : "", image.pageUrl].filter(Boolean).join("\n").slice(0, 900);
           await ctx.replyWithPhoto({ url: image.url }, { caption });
         }
       } catch (imageError) { console.warn("Topic image search failed:", imageError.message); }
