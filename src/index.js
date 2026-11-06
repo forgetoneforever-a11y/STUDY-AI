@@ -240,6 +240,10 @@ app.post("/api/ask", requireTelegramUser, async (req, res) => {
     if (mode === "solve") answer = await createSolution(question);
     else if (mode === "explain") answer = await createTextAnswer(`Объясни простыми словами: ${question}. Добавь короткий пример.`);
     else if (mode === "summary") answer = await createTextAnswer(`Сделай краткий конспект по материалу: ${question}`);
+    else if (mode === "test") answer = await createTextAnswer(`Создай короткий учебный тест по теме: ${question}. Сделай ровно 5 вопросов с вариантами А, Б, В, Г. В конце дай ключ ответов и по одной короткой фразе объяснения. Не выдумывай спорные факты.`);
+    else if (mode === "check") answer = await createTextAnswer(`Проверь решение ученика. Условие и решение ученика: ${question}. Кратко укажи: верно ли решение, где первая ошибка (если есть), как исправить, правильный ответ. Если условие или решение не приложено, попроси недостающую часть.`);
+    else if (mode === "cards") answer = await createTextAnswer(`Сделай 8 карточек для повторения по теме: ${question}. Формат каждой: ВОПРОС — короткий ОТВЕТ. От простого к сложному, без лишней информации.`);
+    else if (mode === "schemes") answer = await createTextAnswer(`Составь понятную текстовую схему по теме: ${question}. Используй иерархию: тема → основные разделы → ключевые пункты. Стрелками покажи причинно-следственные связи, если они есть. Не добавляй неподтверждённые связи.`);
     else if (mode === "search") {
       const sources = await searchWeb(question);
       if (!sources.length) return res.status(503).json({ error: "Поиск не настроен. Добавь TAVILY_API_KEY на сервере." });
